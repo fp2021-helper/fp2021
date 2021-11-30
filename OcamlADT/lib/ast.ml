@@ -1,33 +1,47 @@
-type name = string
+type id = string
 
-type const =
-  | Bool of bool
-  | Int of int
-  | Nill
-  | Unit
-[@@deriving show]
+type bin_op =
+  | Add (*  +   *)
+  | Sub (*  -   *)
+  | Mul (*  *   *)
+  | Div (*  /   *)
+  | Less (*  <   *)
+  | Leq (*  <=  *)
+  | Gre (*  >   *)
+  | Geq (*  >=  *)
+  | Eq (*  ==  *)
+  | Neq (*  <>  *)
+  | And (*  &&  *)
+  | Or (*  ||  *)
+[@@deriving show { with_path = false }]
 
-type pattern =
-  | PConst of const
-  | PVar of name
-  | PCons of pattern * pattern
-[@@deriving show]
+and const =
+  | CBool of bool (*   true  *)
+  | CInt of int (*    1    *)
+  | CString of string (*  "abc"  *)
+[@@deriving show { with_path = false }]
 
-type binop =
-  | Plus
-  | Minus
-  | Mult
-  | Divide
-  | And
-  | Or
-[@@deriving show]
+and case = pat * exp
+(* | _ :: [] -> 5 *)
 
-type expr =
-  | Const of const
-  | BinOp of binop * expr
-  | Var of name
-  | Fun of name * expr
-  | Cons of expr * expr
-  | Let of name * expr * expr
-  | LetRec of name * expr * expr
-[@@deriving show]
+and pat =
+  | PWild (* _        *)
+  | PConst of const (* 1        *)
+  | PVar of id (* abc      *)
+  | PCons of pat * pat (* hd :: tl *)
+  | PList of pat list (* [a; b]   *)
+  | PTuple of pat list (* a, b     *)
+[@@deriving show { with_path = false }]
+
+and exp =
+  | EConst of const
+  | EBinOp of bin_op * exp * exp
+  | EFun of id * exp
+  | ECons of exp * exp
+  | ELet of id * exp * exp
+  | ELetRec of id * exp * exp
+  | App of exp * exp
+  | EType of id * const
+  | EAdt of id * exp list
+  | EMatch of exp * (pat * exp) list
+[@@deriving show { with_path = false }]
