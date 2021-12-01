@@ -46,3 +46,7 @@ and exp =
   | App of exp * exp              (* f x                   *)
   | EMatch of exp * case list     (* match e with | _ -> 0 *)
 [@@deriving show { with_path = false }]
+
+and acase = id * const    (* | Number of int *)
+
+and adt = id * acase list (* type ee = Number of int | Name of string *)
