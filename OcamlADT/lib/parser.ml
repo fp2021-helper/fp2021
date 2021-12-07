@@ -1,70 +1,88 @@
-(* TODO: implement parser here *)
 open Angstrom
+open Ast
 
-let is_space = function
-  | ' ' | '\t' | '\n' | '\r' -> true
-  | _ -> false
-;;
+let parse p s = parse_string ~consume:All p s
 
-let spaces = skip_while is_space
+let chainl1 e op =
+  let rec go acc = lift2 (fun f x -> f acc x) op e 
+  >>= go <|> return acc in
+  e >>= fun init -> go init
 
-let varname =
-  satisfy (function
-      | 'a' .. 'z' -> true
-      | _ -> false)
-;;
+let rec chainr1 e op =
+   e >>= fun a -> op 
+   >>= (fun f -> chainr1 e op >>| f a) 
+   <|> return a
 
-let conde = function
-  | [] -> fail "empty conde"
-  | h :: tl -> List.fold_left ( <|> ) h tl
-;;
+let is_ws = function
+  | ' ' | '\t'  -> true
+  | _          -> false
 
-type dispatch =
-  { apps : dispatch -> char Ast.t Angstrom.t
-  ; single : dispatch -> char Ast.t Angstrom.t
-  }
+let is_eol = function
+  | '\r' | '\n' -> true
+  | _           -> false
 
-let parse_lam =
-  let single pack =
-    fix (fun _ ->
-        conde
-          [ char '(' *> pack.apps pack <* char ')'
-          ; ((string "λ" <|> string "\\") *> spaces *> varname
-            <* spaces
-            <* char '.'
-            >>= fun var -> pack.apps pack >>= fun b -> return (Ast.Abs (var, b)))
-          ; (varname <* spaces >>= fun c -> return (Ast.Var c))
-          ])
-  in
-  let apps pack =
-    many1 (spaces *> pack.single pack <* spaces)
-    >>= function
-    | [] -> fail "bad syntax"
-    | x :: xs -> return @@ List.fold_left (fun l r -> Ast.App (l, r)) x xs
-  in
-  { single; apps }
-;;
+let is_digit = function
+  | '0' .. '9' -> true
+  | _          -> false
 
-let parse = Angstrom.parse_string (parse_lam.apps parse_lam) ~consume:Angstrom.Consume.All
-let parse_optimistically str = Result.get_ok (parse str)
-let pp = Printast.pp Format.pp_print_char
+let is_keyword = function
+  | "let"   | "rec"   | "fun"
+  | "true"  | "false" | "in"
+  | "if"    | "then"  | "else"
+  | "match" | "with"  | "function"
+  | "type"  | "of" -> true
+  | _    -> false
 
-let%expect_test _ =
-  Format.printf "%a" pp (parse_optimistically "x y");
-  [%expect {| App (Var (x), Var (y)) |}]
-;;
+let empty = take_while (fun c -> is_ws c || is_eol c)
+let empty1 = take_while1 (fun c -> is_ws c || is_eol c)
 
-let%expect_test _ =
-  Format.printf "%a" pp (parse_optimistically "(x y)");
-  [%expect {| App (Var (x), Var (y)) |}]
-;;
+let token s = empty *> string s
+let trim p = empty *> p <* empty
+let kwd s = token s <* empty1
+let between l r p = l *> p <* r
 
-let%expect_test _ =
-  Format.printf "%a" pp (parse_optimistically "(\\x . x x)");
-  [%expect {| Abs (x, App (Var (x), Var (x))) |}]
-;;
+(* braces *)
+let lsb = token "["
+let rsb = token "]"
+let comma = token ","
+let colon = token ":"
+let semi = token ";"
+let semisemi = token ";;"
+let bar = token "|"
+let arrow = token "->"
+let parens p = between lp rp p
 
-let%expect_test _ =
-  Format.printf "%a" pp (parse_optimistically "(λf.λx. f (x x))");
-  [%expect {| Abs (f, Abs (x, App (Var (f), App (Var (x), Var (x))))) |}]
-;;
+(* tokens *)
+let _then = token "then"
+let _else = token "else"
+let _if = token "if"
+let _fun = token "fun"
+let _in = token "in"
+let _true = token "true"
+let _false = token "false"
+let _eol = token "\n"
+let _rec = token "rec"
+let _wild = token "_"
+let _match = token "match"
+let _bar = token "|"
+let _with = token "with"
+let _function = token "function"
+let _type = token "type"
+
+(********************** constructors **********************)
+(* const constructors *)
+
+let cint n = CInt n
+let cbool b = CBool b
+let cstring s = CString s
+
+(* expr constructors *)
+
+let econst c = EConst c
+let evar id = EVar id
+let elist l = EList l 
+let etuple l = ETuple l
+let econs e1 e2 = ECons (e1, e2)
+let eif e1 e2 e3 = EIf (e1, e2, e3)
+let elet id e1 e2 = ELet (id, e1, e2)
+
