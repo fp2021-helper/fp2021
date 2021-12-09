@@ -29,6 +29,7 @@ and pattern =
   | PVar of id                  (* abc      *)
   | PCons of pattern * pattern  (* hd :: tl *)
   | PList of pattern list       (* [a; b]   *)
+  | PTuple of pattern list      (* a, b     *)
 [@@deriving show { with_path = false }]
 
 and expr =
@@ -47,6 +48,9 @@ and expr =
 
 and acase = id * const    (* | Number of int *)
 
+and binding = bool * pattern * expr (* let rec x e in e' *)
+[@@deriving show { with_path = false }]
+
 and decl = 
-  | DLet of pattern * expr    (* let x = 1                             *)
+  | DLet of binding           (* let x = 1                             *)
   | DAdt of id * acase list   (* type ee = Age of int | Name of string *)
