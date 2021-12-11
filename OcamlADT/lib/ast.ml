@@ -28,8 +28,9 @@ and pattern =
   | PConst of const             (* 1        *)
   | PVar of id                  (* abc      *)
   | PCons of pattern * pattern  (* hd :: tl *)
-  | PList of pattern list       (* [a; b]   *)
+  | PNil                        (* []       *)
   | PTuple of pattern list      (* a, b     *)
+  | PAdt of acase
 [@@deriving show { with_path = false }]
 
 and expr =
@@ -44,6 +45,7 @@ and expr =
   | EFun of pattern * expr           (* fun x -> x * 2        *)
   | EApp of expr * expr              (* f x                   *)
   | EMatch of expr * case list       (* match e with | _ -> 0 *)
+  | ENil                             (* []                    *)
 [@@deriving show { with_path = false }]
 
 and acase = id * const    (* | Number of int *)
