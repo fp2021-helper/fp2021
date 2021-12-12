@@ -26,11 +26,6 @@ let is_digit = function
   | '0' .. '9' -> true
   | _          -> false
 
-let is_id = function
-| '0' .. '9' | 'a' .. 'z' 
-| 'A' .. 'Z' | '_'        -> true
-| _                       -> false 
-
 let is_keyword = function
   | "let"   | "rec"   | "fun"
   | "true"  | "false" | "in"
@@ -122,13 +117,18 @@ let disj = choice_op [ "||", Or ]
 let cons = token "::" *> return econs
 
 let identifier is_valid_first_char = 
+  let is_char_id = function 
+  | '0' .. '9' | 'a' .. 'z' 
+  | 'A' .. 'Z' | '_' -> true 
+  | _                -> false
+  in
   let* fst = empty *> satisfy is_valid_first_char in
   let take_func = 
     match fst with
     | '_' -> many1
     | _ -> many
   in
-  let* inner = take_func ( satisfy is_id ) in
+  let* inner = take_func ( satisfy is_char_id ) in
   let id = Base.String.of_char_list ( fst :: inner ) in
   if is_keyword id then fail "Ivalid id" else return id
 
@@ -222,5 +222,6 @@ let pack =
       trim 
       @@ lift3 eif (kwd "if" *> d.expr d) (kwd "then" *> d.expr d) (kwd "else" *> d.expr d)
     in
-    let exp d = fix @@ fun _self -> trim @@ d.key d <|> d.tuple d <|> d.op d in
-
+  in
+  let exp d = fix @@ fun _self -> trim @@ d.key d <|> d.tuple d <|> d.op d in
+  key
