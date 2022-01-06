@@ -22,6 +22,8 @@ and const =
 [@@deriving show { with_path = false }]
 
 and case = pattern * expr   (* | _ :: [] -> 1 *)
+and acase = id * pattern            (* | Number 3      *)
+and aconstr = id * tyexpr           (* | Number of int *)
 
 and pattern =
   | PWild                       (* _        *)
@@ -30,7 +32,7 @@ and pattern =
   | PCons of pattern * pattern  (* hd :: tl *)
   | PNil                        (* []       *)
   | PTuple of pattern list      (* a, b     *)
-  | PAdt of acase
+  | PACase of acase
 [@@deriving show { with_path = false }]
 
 and expr =
@@ -41,18 +43,31 @@ and expr =
   | ETuple of expr list              (* 1, 2                  *)
   | ECons of expr * expr             (* hd :: tl              *)
   | EIf of expr * expr * expr        (* if true then 1 else 0 *)
-  | ELet of id * expr * expr         (* let x e in e'         *)
+  | ELet of binding * expr           (* let x e in e'         *)
   | EFun of pattern * expr           (* fun x -> x * 2        *)
   | EApp of expr * expr              (* f x                   *)
   | EMatch of expr * case list       (* match e with | _ -> 0 *)
   | ENil                             (* []                    *)
+  | EConstr of id * expr
 [@@deriving show { with_path = false }]
 
-and acase = id * const    (* | Number of int *)
-
-and binding = bool * pattern * expr (* let rec x e in e' *)
+and binding = bool * pattern * expr  (* let rec x e in e' *)
 [@@deriving show { with_path = false }]
 
 and decl = 
-  | DLet of binding           (* let x = 1                             *)
-  | DAdt of id * acase list   (* type ee = Age of int | Name of string *)
+  | DLet of binding  (* let x = 1                                 *)
+  | DAdt of adt      (* type person = Age of int | Name of string *)
+
+and tyexpr = 
+  | TInt
+  | TBool
+  | TString
+  | TList of tyexpr
+  | TTuple of tyexpr list
+  | TArrow of tyexpr * tyexpr (* string -> string *)
+  | TAdt of id
+
+and adt = id * aconstr list (* type person = Age of int | Name of string *)
+
+and program = decl list
+[@@deriving show { with_path = false }]
