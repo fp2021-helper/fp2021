@@ -1,8 +1,6 @@
 open Format
 open Ast
-open Pretty_printer
 open Parser
-open Angstrom
 
 module type MONAD_FAIL = sig
   include Base.Monad.S2
