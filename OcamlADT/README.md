@@ -9,7 +9,7 @@ Author: MIkhail Vintcukevich, mishavint@mail.ru
 Features done (append only):
 
 - Parser
-- interpreter of non-recursive functions
+- interpreter of functions
 
 
 ##### Замечания по стилю кодирования

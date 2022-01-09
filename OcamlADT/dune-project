@@ -18,7 +18,7 @@
  (name OcamlAdt) ; FIXME and regenerate .opam file using 'dune build @install'
  (synopsis "An interpreter for Ocaml")
  (description
-  "Interpreter su[pports basic types, functions, recursion and algebraic types")
+  "Interpreter supports basic types, functions, recursion and algebraic types")
  (version 0.1)
  (depends
   dune
