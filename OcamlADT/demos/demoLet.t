@@ -1,3 +1,3 @@
-$ ./demoLet.exe
-val x = <fun>
-val z = 4
+  $ ./demoLet.exe
+  val x = <fun>
+  val z = 4

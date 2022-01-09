@@ -10,5 +10,11 @@
  (public_name demoLet)
  (libraries OcamlAdt.Lib))
 
+(executable
+ (name demoFunction)
+ (modules demoFunction)
+ (public_name demoFunction)
+ (libraries OcamlAdt.Lib))
+
 (cram
- (deps ./demoAdt.exe))
+ (deps ./demoAdt.exe ./demoLet.exe ./demoFunction.exe))
