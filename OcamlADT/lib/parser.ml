@@ -2,8 +2,6 @@ open Angstrom
 open Ast
 open Base
 
-let parse p s = parse_string ~consume:All p s
-
 let chainl1 e op =
   let rec go acc = lift2 (fun f x -> f acc x) op e >>= go <|> return acc in
   e >>= fun init -> go init
@@ -290,4 +288,121 @@ let decl =
 
 (* program parser *)
 
-let prog = many1 (trim @@ decl <* trim (many (trim (token ";;"))))
+let progr = many1 (trim @@ decl <* trim (many (trim (token ";;"))))
+let parse_with p s = parse_string ~consume:Consume.All p s
+
+let parse_or_error s =
+  match parse_with progr s with
+  | Ok ok -> ok
+  | Error err ->
+      Format.printf "Error while parsing: %s\n" err;
+      exit 1
+
+(* TESTS *)
+
+let test_for_parser code expected =
+  match parse_with progr code with
+  | Ok ok -> (
+    match List.equal equal_decl ok expected with
+    | true -> true
+    | false ->
+        Format.printf "Expected: %a\nActual: %a\n" pp_program expected
+          pp_program ok;
+        false )
+  | Error err ->
+      Format.printf "Error: %s\n" err;
+      false
+
+let%test _ =
+  test_for_parser
+    {|
+           let x = 2
+|}
+    [DLet (false, PVar "x", EConst (CInt 2))]
+
+let%test _ =
+  test_for_parser
+    {|
+           let sum x y = x + y
+           let sum_of_two = sum 2
+|}
+    [ DLet
+        ( false
+        , PVar "sum"
+        , EFun (PVar "x", EFun (PVar "y", EBinOp (Add, EVar "x", EVar "y"))) )
+    ; DLet (false, PVar "sum_of_two", EApp (EVar "sum", EConst (CInt 2))) ]
+
+let%test _ =
+  test_for_parser
+    {|
+        let is_true = function
+        | true -> true
+        | false -> false
+|}
+    [ DLet
+        ( false
+        , PVar "is_true"
+        , EFun
+            ( PVar "match"
+            , EMatch
+                ( EVar "match"
+                , [ (PConst (CBool true), EConst (CBool true))
+                  ; (PConst (CBool false), EConst (CBool false)) ] ) ) ) ]
+
+let%test _ =
+  test_for_parser
+    {|
+     let rec map f = function
+     | [] -> []
+     | h :: tl -> f h :: map f tl
+|}
+    [ DLet
+        ( true
+        , PVar "map"
+        , EFun
+            ( PVar "f"
+            , EFun
+                ( PVar "match"
+                , EMatch
+                    ( EVar "match"
+                    , [ (PNil, ENil)
+                      ; ( PCons (PVar "h", PVar "tl")
+                        , ECons
+                            ( EApp (EVar "f", EVar "h")
+                            , EApp (EApp (EVar "map", EVar "f"), EVar "tl") ) )
+                      ] ) ) ) ) ]
+
+let%test _ =
+  test_for_parser {|
+  let _ = 100 / 4 * (3 + (3 - 3)) / 9090
+|}
+    [ DLet
+        ( false
+        , PWild
+        , EBinOp
+            ( Div
+            , EConst (CInt 100)
+            , EBinOp
+                ( Mul
+                , EConst (CInt 4)
+                , EBinOp
+                    ( Div
+                    , EBinOp
+                        ( Add
+                        , EConst (CInt 3)
+                        , EBinOp (Sub, EConst (CInt 3), EConst (CInt 3)) )
+                    , EConst (CInt 9090) ) ) ) ) ]
+
+let%test _ =
+  test_for_parser {|
+  type a = |Age of int | Name of string  
+|}
+    [DAdt ("a", [("Age", TInt); ("Name", TString)])]
+
+let%test _ =
+  test_for_parser {|
+  type a = |Age of int | Name of string
+  let x = Age 2
+|}
+    [ DAdt ("a", [("Age", TInt); ("Name", TString)])
+    ; DLet (false, PVar "x", EConstr ("Age", EConst (CInt 2))) ]

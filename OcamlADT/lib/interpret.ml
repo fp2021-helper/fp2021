@@ -8,7 +8,6 @@ module type MONAD_FAIL = sig
   include Base.Monad.S2
 
   val fail : 'e -> ('a, 'e) t
-  val run : ('a, 'e) t -> ok:('a -> ('b, 'e) t) -> err:('e -> ('b, 'e) t) -> ('b, 'e) t
   val ( let* ) : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
 end
 
@@ -21,144 +20,308 @@ type value =
   | VList of value list
   | Vtuple of value list
   | VFun of pattern * expr * env
+  | VAdt of string * value
+[@@deriving eq]
 
-and env = value BindsMap.t
-
-exception Not_bound
-
-let look_for_bind map name =
-  try BindsMap.find name map with Not_found -> raise Not_bound
+and env = value option ref BindsMap.t
 
 let vint i = VInt i
 let vstring s = VString s
 let vbool b = VBool b
 let vtuple t = Vtuple t
 let vlist l = VList l
+let vadt s v = VAdt (s, v)
 
-type run_error =
+let rec pp_value fmt = function
+  | VInt i -> fprintf fmt "%d" i
+  | VString str -> fprintf fmt "%s" str
+  | VBool b -> fprintf fmt "%b" b
+  | Vtuple t ->
+      fprintf fmt "(%a)"
+        (pp_print_list ~pp_sep:(fun _ _ -> printf ", ") pp_value)
+        t
+  | VList l ->
+      fprintf fmt "[%a]"
+        (pp_print_list ~pp_sep:(fun _ _ -> printf "; ") pp_value)
+        l
+  | VFun _ -> fprintf fmt "<fun>"
+  | VAdt (constr, value) -> fprintf fmt "%s %a" constr pp_value value
+
+type interpret_err =
   | Division_by_zero
   | Unbound of string
-  | Match_exhaust of pattern list
+  | Match_exhaust
   | Incorrect_eval of value
-  | Match_fail
-[@@deriving show {with_path= false}]
+[@@deriving eq, show {with_path= false}]
 
-type run_ok_element = string * (tyexpr * value)
-type run_ok = run_ok_element list
+type decl_binding = id * value [@@deriving eq]
+type interpret_ok = decl_binding list [@@deriving eq]
 
-(* pretty printers *)
-let rec pp_value _ = function
-  | VInt i -> printf "%d" i
-  | VString str -> printf "%s" str
-  | VBool b -> printf "%b" b
-  | Vtuple t ->
-      printf "(%a)" (pp_print_list ~pp_sep:(fun _ _ -> printf ", ") pp_value) t
-  | VList l ->
-      printf "[%a]" (pp_print_list ~pp_sep:(fun _ _ -> printf "; ") pp_value) l
-  | VFun _ -> printf "<fun>"
+let pp_interpret_err fmt = function
+  | Unbound str -> fprintf fmt "Unbound value %s" str
+  | Division_by_zero -> fprintf fmt "Division by zero"
+  | Match_exhaust -> fprintf fmt "This pattern matching is not exhaustive"
+  | Incorrect_eval value ->
+      fprintf fmt "Value %a is of incorrect type" pp_value value
 
-let pp_error = function
-  | Unbound str -> printf "Unbound value %s" str
-  | Division_by_zero -> printf "Division by zero"
-  | Match_exhaust _ -> printf "This pattern matching is not exhaustive"
-  | Incorrect_eval value -> printf "Value %a has incorrect type" pp_value value
-  | _ -> printf "Error with interpret"
+let pp_decl_binding fmt (name, value) =
+  fprintf fmt "val %s = %a" name pp_value value
 
-let pp_run_ok_element fmt (name, (tyexpr, value)) =
-  fprintf fmt "val %s : %a = %a" name pp_tyexpr tyexpr pp_value value
+let pp_interpret_ok = pp_print_list ~pp_sep:pp_force_newline pp_decl_binding
 
-let pp_run_ok = pp_print_list ~pp_sep:pp_force_newline pp_run_ok_element
-
-module Interpret (M : MONAD_FAIL) = struct
+module Interpret (M : MONAD_FAIL) : sig
+  val run : program -> (interpret_ok, interpret_err) M.t
+end = struct
   open M
 
-  let lookup name env = 
-    match Option.bind (BindsMap.find_opt name env) ( ! ) with
-    | None -> fail (Unbound name)
-    | Some s -> return s
+  let look_for_bind map name =
+    try
+      match !(BindsMap.find name map) with
+      | Some v -> return v
+      | None -> fail (Unbound name)
+    with Not_found -> fail (Unbound name)
 
-  let add_val name value env = BindsMap.add name (ref (Some value)) env
+  let add_bind id value env = BindsMap.add id (ref (Some value)) env
 
-  let extend_env env binds = 
-    List.fold_left (fun env (id, v) -> BindsMap.add id v env) env binds
+  let extend_env env binds =
+    List.fold_left (fun env (id, v) -> add_bind id v env) env binds
 
-  let rec case_env pattern value = 
-    match pattern, value with
+  let rec pattern_bindings = function
+    | PWild -> []
+    | PNil -> []
+    | PVar name -> [name]
+    | PConst c -> (
+      match c with
+      | CInt c -> [string_of_int c]
+      | CBool b -> [string_of_bool b]
+      | CString str -> [str] )
+    | PTuple pts ->
+        let rec helper = function
+          | [] -> []
+          | hd :: tl -> pattern_bindings hd @ helper tl in
+        helper pts
+    | PCons (patt1, patt2) -> pattern_bindings patt1 @ pattern_bindings patt2
+    | PACase (pconstr, pcase) -> [pconstr] @ pattern_bindings pcase
+
+  let rec pattern_decl_bindings pattern value =
+    match (pattern, value) with
     | PNil, VList [] -> return []
     | PWild, _ -> return []
-    | PVar name, v -> return [ name, v ]
-    | PConst (CInt c), VInt v ->
-      if c = v then return [] else fail (Match_fail)
+    | PVar name, v -> return [(name, v)]
+    | PConst (CInt c), VInt v -> if c = v then return [] else fail Match_exhaust
     | PConst (CString c), VString v ->
-      if c = v then return [] else fail (Match_fail)
-    | PConst (CBool c), VBool v -> 
-      if c = v then return [] else fail (Match_fail)
+        if c = v then return [] else fail Match_exhaust
+    | PConst (CBool c), VBool v ->
+        if c = v then return [] else fail Match_exhaust
     | PCons (patt1, patt2), VList (hd :: tl) ->
-      case_env patt1 hd >>= (fun hd_match ->
-      case_env patt2 (VList tl) >>= (fun tl_match ->
-      return ( hd_match @ tl_match )))
-    | PTuple pts, Vtuple vts ->
-      (match pts, vts with
+        pattern_decl_bindings patt1 hd
+        >>= fun hd_match ->
+        pattern_decl_bindings patt2 (VList tl)
+        >>= fun tl_match -> return (hd_match @ tl_match)
+    | PTuple pts, Vtuple vts -> (
+      match (pts, vts) with
       | [], [] -> return []
       | hd_pts :: tl_pts, hd_vts :: tl_vts ->
-        case_env hd_pts hd_vts >>= (fun bind_hd -> 
-        case_env (PTuple tl_pts) (Vtuple tl_vts) >>= (fun bind_tl ->
-        return (bind_hd @ bind_tl )))
-      | _ -> fail (Match_fail))
-    | _ -> return []
+          pattern_decl_bindings hd_pts hd_vts
+          >>= fun bind_hd ->
+          pattern_decl_bindings (PTuple tl_pts) (Vtuple tl_vts)
+          >>= fun bind_tl -> return (bind_hd @ bind_tl)
+      | _ -> fail Match_exhaust )
+    | PACase (pconstr, p), VAdt (vconstr, v) when pconstr = vconstr ->
+        pattern_decl_bindings p v
+    | _ -> fail Match_exhaust
 
-  let rec eval expr env = 
+  let rec check_pattern pattern value =
+    match (pattern, value) with
+    | PVar _, _ -> true
+    | PWild, _ -> true
+    | PConst (CInt pn), VInt vn -> pn = vn
+    | PConst (CString pn), VString vn -> pn = vn
+    | PConst (CBool pn), VBool vn -> pn = vn
+    | PCons (phd, ptl), VList (vhd :: vtl) ->
+        check_pattern phd vhd && check_pattern ptl (VList vtl)
+    | PNil, VList [] -> true
+    | PTuple ps, Vtuple vs ->
+        List.length ps = List.length vs
+        && List.for_all2 (fun p v -> check_pattern p v) ps vs
+    | PACase (pconstr, p), VAdt (vconstr, v) ->
+        pconstr = vconstr && check_pattern p v
+    | _ -> false
+
+  let rec eval expr env =
     match expr with
     | EVar name -> look_for_bind env name
-    | EConst c ->
-      (match c with
+    | EConst c -> (
+      match c with
       | CInt i -> return (vint i)
       | CString str -> return (vstring str)
-      | CBool b -> return (vbool b))
+      | CBool b -> return (vbool b) )
     | ENil -> return (vlist [])
-    | EBinOp (op, e1, e2) ->
-      let* value1 = eval e1 env in
-      (match value1, op with
-      | VBool false, And -> return (vbool false)
-      | VBool true, Or -> return (vbool true)
-      | _ ->
-        let* value2 = eval e2 env in 
-        (match value1, value2, op with 
-        | VInt x, VInt y, Add -> return (vint (x + y))
-        | VInt x, VInt y, Sub -> return (vint (x - y))
-        | VInt x, VInt y, Mul -> return (vint (x * y))
-        | VInt _, VInt y, Div when y = 0 -> fail Division_by_zero
-        | VInt x, VInt y, Div -> return (vint (x / y))
-        | VInt x, VInt y, Less -> return (vbool (x < y))
-        | VInt x, VInt y, Leq -> return (vbool (x <= y))
-        | VInt x, VInt y, Gre -> return (vbool (x > y))
-        | VInt x, VInt y, Geq -> return (vbool (x >= y))
-        | VInt x, VInt y, Eq -> return (vbool (x = y))
-        | VString str1, VString str2, Eq -> return (vbool (str1 = str2))
-        | VBool b1, VBool b2, Eq -> return (vbool (b1 = b2))
-        | VInt x, VInt y, Neq -> return (vbool (x != y))
-        | VString str1, VString str2, Neq -> return (vbool (str1 != str2))
-        | VBool b1, VBool b2, Neq -> return (vbool (b1 != b2))
-        | VBool _, VBool b2 , And 
-        | VBool _, VBool b2, Or -> return (vbool b2)
-        | _ -> fail (Incorrect_eval (Vtuple [ value1; value2 ]))))
+    | EBinOp (op, e1, e2) -> (
+        let* value1 = eval e1 env in
+        match (value1, op) with
+        | VBool false, And -> return (vbool false)
+        | VBool true, Or -> return (vbool true)
+        | _ -> (
+            let* value2 = eval e2 env in
+            match (value1, value2, op) with
+            | VInt x, VInt y, Add -> return (vint (x + y))
+            | VInt x, VInt y, Sub -> return (vint (x - y))
+            | VInt x, VInt y, Mul -> return (vint (x * y))
+            | VInt _, VInt y, Div when y = 0 -> fail Division_by_zero
+            | VInt x, VInt y, Div -> return (vint (x / y))
+            | VInt x, VInt y, Less -> return (vbool (x < y))
+            | VInt x, VInt y, Leq -> return (vbool (x <= y))
+            | VInt x, VInt y, Gre -> return (vbool (x > y))
+            | VInt x, VInt y, Geq -> return (vbool (x >= y))
+            | VInt x, VInt y, Eq -> return (vbool (x = y))
+            | VString str1, VString str2, Eq -> return (vbool (str1 = str2))
+            | VBool b1, VBool b2, Eq -> return (vbool (b1 = b2))
+            | VInt x, VInt y, Neq -> return (vbool (x != y))
+            | VString str1, VString str2, Neq -> return (vbool (str1 != str2))
+            | VBool b1, VBool b2, Neq -> return (vbool (b1 != b2))
+            | VBool _, VBool b2, And | VBool _, VBool b2, Or ->
+                return (vbool b2)
+            | _ -> fail (Incorrect_eval (Vtuple [value1; value2])) ) )
     | ETuple l -> all (List.map (fun e -> eval e env) l) >>| vtuple
     | EList _ -> return (vlist [])
-    | EIf (e1, e2, e3) -> 
-      let* res = eval e1 env in
-      (match res with
-      | VBool true -> eval e2 env
-      | VBool false -> eval e3 env
-      | e -> fail (Incorrect_eval e))
+    | EIf (e1, e2, e3) -> (
+        let* res = eval e1 env in
+        match res with
+        | VBool true -> eval e2 env
+        | VBool false -> eval e3 env
+        | e -> fail (Incorrect_eval e) )
     | EFun (pattern, expr) -> return (VFun (pattern, expr, env))
-    | ELet (* TODO *)
-    | EMatch
-    | EApp (* TODO *) -> return (VInt 2)
+    | ECons (expr1, expr2) -> (
+        let* value1 = eval expr1 env in
+        let* value2 = eval expr2 env in
+        match value2 with
+        | VList l -> return (VList (value1 :: l))
+        | _ -> fail (Incorrect_eval value2) )
+    | EApp (fn_expr, arg_expr) -> (
+        let* fn_value = eval fn_expr env in
+        let* arg_value = eval arg_expr env in
+        match fn_value with
+        | VFun (pattern, expr, env) ->
+            let* binds = pattern_decl_bindings pattern arg_value in
+            eval expr (extend_env env binds)
+        | _ -> fail (Incorrect_eval fn_value) )
+    | ELet (binding, expr) ->
+        let* env = add_binding binding env in
+        eval expr env
+    | EMatch (expr, cases) -> (
+        let* value = eval expr env in
+        match
+          List.find_opt (fun (pattern, _) -> check_pattern pattern value) cases
+        with
+        | None -> fail Match_exhaust
+        | Some (pattern, expr) ->
+            let* binds = pattern_decl_bindings pattern value in
+            eval expr (extend_env env binds) )
+    | EConstr (constr, expr) ->
+        let* value = eval expr env in
+        return (vadt constr value)
 
-  let run program = 
-    List.fold_left 
-    (fun acc decl -> acc >>= (env, vals) ->
-    add_decl decl env
-    >>= fun env -> lookup decl.name )
-  let pp_res fmt res = 
+  and add_binding binding env =
+    match binding with
+    | false, pattern, expr ->
+        let* value = eval expr env in
+        let* binds = pattern_decl_bindings pattern value in
+        return (extend_env env binds)
+    | true, pattern, expr ->
+        let binds = pattern_bindings pattern in
+        let env =
+          List.fold_left
+            (fun env id -> BindsMap.add id (ref None) env)
+            env binds in
+        let* value = eval expr env in
+        let* binds = pattern_decl_bindings pattern value in
+        List.iter (fun (id, value) -> BindsMap.find id env := Some value) binds;
+        return env
+
+  let run program =
+    let* binds, _ =
+      List.fold_left
+        (fun acc decl ->
+          match decl with
+          | DAdt _ -> acc
+          | DLet binding ->
+              let* binds, env = acc in
+              let* env = add_binding binding env in
+              let _, pattern, _ = binding in
+              let* new_binds =
+                all
+                  (List.map
+                     (fun id ->
+                       let* value = look_for_bind env id in
+                       return (id, value) )
+                     (pattern_bindings pattern) ) in
+              let binds =
+                List.fold_left
+                  (fun binds (id, _) -> List.remove_assq id binds)
+                  binds new_binds in
+              return (binds @ new_binds, env) )
+        (return ([], BindsMap.empty))
+        program in
+    return binds
 end
+
+module InterpretResult = Interpret (struct
+  include Base.Result
+
+  let ( let* ) m f = bind m ~f
+end)
+
+let run_interpret code = InterpretResult.run (parse_or_error code)
+
+let pp_run_interpret fmt code =
+  match run_interpret code with
+  | Ok ok -> fprintf fmt "%a\n" pp_interpret_ok ok
+  | Error err -> fprintf fmt "Error:\n%a\n" pp_interpret_err err
+
+(* TESTS *)
+
+let test_run_interpret code expected =
+  match run_interpret code with
+  | Ok ok ->
+      List.exists
+        (fun needed -> List.exists (fun x -> equal_decl_binding needed x) ok)
+        expected
+  | Error err ->
+      printf "%a\n" pp_interpret_err err;
+      false
+
+let test_run_interpret_err code expected =
+  match run_interpret code with
+  | Ok ok ->
+      printf "Didn't find error: \n%a\n" pp_interpret_ok ok;
+      false
+  | Error err when equal_interpret_err err expected -> true
+  | Error err ->
+      printf "False error, expected: %a, found %a\n" pp_interpret_err expected
+        pp_interpret_err err;
+      false
+
+let%test _ = test_run_interpret {|
+  let x = 2
+|} [("x", VInt 2)]
+
+let%test _ =
+  test_run_interpret
+    {|
+  type a = 
+  | Age of int 
+  | Name of string
+  ;;
+  
+  let x = Age 2
+|}
+    [("x", VAdt ("Age", VInt 2))]
+
+let%test _ = test_run_interpret_err {|
+  let x = 1 / 0
+|} Division_by_zero
+
+let%test _ = test_run_interpret_err {|
+  let y = x
+|} (Unbound "x")

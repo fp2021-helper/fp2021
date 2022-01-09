@@ -1,6 +1,14 @@
 (executable
- (name demoParse)
- (modules demoParse)
- (libraries OcamlAdt.Lib)
- (preprocess
-  (pps ppx_deriving.show ppx_deriving.eq)))
+ (name demoAdt)
+ (modules demoAdt)
+ (public_name demoAdt)
+ (libraries OcamlAdt.Lib))
+
+(executable
+ (name demoLet)
+ (modules demoLet)
+ (public_name demoLet)
+ (libraries OcamlAdt.Lib))
+
+(cram
+ (deps ./demoAdt.exe))

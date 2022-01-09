@@ -1,1 +1,0 @@
-open OcamlAdt_lib
