@@ -314,17 +314,14 @@ let test_for_parser code expected =
       false
 
 let%test _ =
-  test_for_parser
-    {|
-           let x = 2
-|}
-    [DLet (false, PVar "x", EConst (CInt 2))]
+  test_for_parser {|
+  let x = 2
+|} [DLet (false, PVar "x", EConst (CInt 2))]
 
 let%test _ =
-  test_for_parser
-    {|
-           let sum x y = x + y
-           let sum_of_two = sum 2
+  test_for_parser {|
+  let sum x y = x + y
+  let sum_of_two = sum 2
 |}
     [ DLet
         ( false
@@ -335,9 +332,9 @@ let%test _ =
 let%test _ =
   test_for_parser
     {|
-        let is_true = function
-        | true -> true
-        | false -> false
+  let is_true = function
+  | true -> true
+  | false -> false
 |}
     [ DLet
         ( false
@@ -353,8 +350,8 @@ let%test _ =
   test_for_parser
     {|
      let rec map f = function
-     | [] -> []
-     | h :: tl -> f h :: map f tl
+  | [] -> []
+  | h :: tl -> f h :: map f tl
 |}
     [ DLet
         ( true
@@ -406,3 +403,55 @@ let%test _ =
 |}
     [ DAdt ("a", [("Age", TInt); ("Name", TString)])
     ; DLet (false, PVar "x", EConstr ("Age", EConst (CInt 2))) ]
+
+let%test _ =
+  test_for_parser
+    {|
+     let rec map f = function
+   | [] -> []
+   | h :: tl -> f h :: map f tl
+
+   let x = [1;2;3]
+   let y = map (fun x -> x + 3) [1;2;3]
+|}
+    [ DLet
+        ( true
+        , PVar "map"
+        , EFun
+            ( PVar "f"
+            , EFun
+                ( PVar "match"
+                , EMatch
+                    ( EVar "match"
+                    , [ (PNil, ENil)
+                      ; ( PCons (PVar "h", PVar "tl")
+                        , ECons
+                            ( EApp (EVar "f", EVar "h")
+                            , EApp (EApp (EVar "map", EVar "f"), EVar "tl") ) )
+                      ] ) ) ) )
+    ; DLet
+        ( false
+        , PVar "x"
+        , ECons
+            ( EConst (CInt 1)
+            , ECons (EConst (CInt 2), ECons (EConst (CInt 3), ENil)) ) )
+    ; DLet
+        ( false
+        , PVar "y"
+        , EApp
+            ( EApp
+                ( EVar "map"
+                , EFun (PVar "x", EBinOp (Add, EVar "x", EConst (CInt 3))) )
+            , ECons
+                ( EConst (CInt 1)
+                , ECons (EConst (CInt 2), ECons (EConst (CInt 3), ENil)) ) ) )
+    ]
+
+let%test _ =
+  test_for_parser
+    {|
+     let x = 1 :: 2 :: []
+|}
+    [ DLet
+        (false, PVar "x", ECons (EConst (CInt 1), ECons (EConst (CInt 2), ENil)))
+    ]

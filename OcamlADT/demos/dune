@@ -16,5 +16,29 @@
  (public_name demoFunction)
  (libraries OcamlAdt.Lib))
 
+(executable
+ (name demoRec)
+ (modules demoRec)
+ (public_name demoRec)
+ (libraries OcamlAdt.Lib))
+
+(executable
+ (name demoCons)
+ (modules demoCons)
+ (public_name demoCons)
+ (libraries OcamlAdt.Lib))
+
+(executable
+ (name demoApp)
+ (modules demoApp)
+ (public_name demoApp)
+ (libraries OcamlAdt.Lib))
+
 (cram
- (deps ./demoAdt.exe ./demoLet.exe ./demoFunction.exe))
+ (deps
+  ./demoAdt.exe
+  ./demoLet.exe
+  ./demoFunction.exe
+  ./demoRec.exe
+  ./demoCons.exe
+  ./demoApp.exe))

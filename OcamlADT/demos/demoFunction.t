@@ -1,3 +1,3 @@
   $ ./demoFunction.exe
   val x = <fun>
-  val y = false
+  val y = true

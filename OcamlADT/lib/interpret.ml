@@ -38,11 +38,11 @@ let rec pp_value fmt = function
   | VBool b -> fprintf fmt "%b" b
   | Vtuple t ->
       fprintf fmt "(%a)"
-        (pp_print_list ~pp_sep:(fun _ _ -> printf ", ") pp_value)
+        (pp_print_list ~pp_sep:(fun _ _ -> fprintf fmt ", ") pp_value)
         t
   | VList l ->
       fprintf fmt "[%a]"
-        (pp_print_list ~pp_sep:(fun _ _ -> printf "; ") pp_value)
+        (pp_print_list ~pp_sep:(fun _ _ -> fprintf fmt "; ") pp_value)
         l
   | VFun _ -> fprintf fmt "<fun>"
   | VAdt (constr, value) -> fprintf fmt "%s %a" constr pp_value value
@@ -87,21 +87,15 @@ end = struct
     List.fold_left (fun env (id, v) -> add_bind id v env) env binds
 
   let rec pattern_bindings = function
-    | PWild -> []
-    | PNil -> []
+    | PWild | PNil | PConst _ -> []
     | PVar name -> [name]
-    | PConst c -> (
-      match c with
-      | CInt c -> [string_of_int c]
-      | CBool b -> [string_of_bool b]
-      | CString str -> [str] )
     | PTuple pts ->
         let rec helper = function
           | [] -> []
           | hd :: tl -> pattern_bindings hd @ helper tl in
         helper pts
     | PCons (patt1, patt2) -> pattern_bindings patt1 @ pattern_bindings patt2
-    | PACase (pconstr, pcase) -> [pconstr] @ pattern_bindings pcase
+    | PACase (pconstr, pcase) -> pconstr :: pattern_bindings pcase
 
   let rec pattern_decl_bindings pattern value =
     match (pattern, value) with
@@ -283,10 +277,17 @@ let pp_run_interpret fmt code =
 
 let test_run_interpret code expected =
   match run_interpret code with
-  | Ok ok ->
-      List.exists
-        (fun needed -> List.exists (fun x -> equal_decl_binding needed x) ok)
-        expected
+  | Ok ok -> (
+      let flag =
+        List.exists
+          (fun needed -> List.for_all (fun x -> equal_decl_binding needed x) ok)
+          expected in
+      match flag with
+      | true -> true
+      | false ->
+          printf "Error\nExpected:%a\nFound:%a\n" pp_interpret_ok expected
+            pp_interpret_ok ok;
+          false )
   | Error err ->
       printf "%a\n" pp_interpret_err err;
       false
@@ -318,6 +319,24 @@ let%test _ =
 |}
     [("x", VAdt ("Age", VInt 2))]
 
+let%test _ = test_run_interpret {|
+  let x = 0 + 9090 / 3
+|} [("x", VInt 3030)]
+
+let%test _ =
+  test_run_interpret
+    {|
+     let y = if 5 > 4 then true else false
+   |}
+    [("y", VBool true)]
+
+let%test _ =
+  test_run_interpret
+    {|
+     let y = if 3 > 4 then true else false
+   |}
+    [("y", VBool false)]
+
 let%test _ = test_run_interpret_err {|
   let x = 1 / 0
 |} Division_by_zero
@@ -325,3 +344,9 @@ let%test _ = test_run_interpret_err {|
 let%test _ = test_run_interpret_err {|
   let y = x
 |} (Unbound "x")
+
+let%test _ =
+  test_run_interpret_err {|
+  let x = 1 :: 2 :: "p"
+|}
+    (Incorrect_eval (VString "p"))
