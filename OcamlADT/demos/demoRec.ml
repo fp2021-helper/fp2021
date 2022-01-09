@@ -1,4 +1,4 @@
-open OcamlAdt_lib.Interpret
+open OcamlADT_lib.Interpret
 open Format
 
 let () =

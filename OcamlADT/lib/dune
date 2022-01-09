@@ -1,6 +1,6 @@
 (library
- (name OcamlAdt_lib)
- (public_name OcamlAdt.Lib)
+ (name OcamlADT_lib)
+ (public_name OcamlADT.Lib)
  (modules Ast Parser Interpret Pretty_printer)
  (libraries base angstrom ppx_show.runtime)
  (preprocess

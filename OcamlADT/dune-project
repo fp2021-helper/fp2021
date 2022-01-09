@@ -10,12 +10,12 @@
 
 (maintainers "https://github.com/Mishavint")
 
-(bug_reports "https://github.com/Mishavint/fp2021/OcamlAdt")
+(bug_reports "https://github.com/Mishavint/fp2021")
 
-(homepage "https://github.com/Mishavint/fp2021/OcamlAdt")
+(homepage "https://github.com/Mishavint/fp2021")
 
 (package
- (name OcamlAdt) ; FIXME and regenerate .opam file using 'dune build @install'
+ (name OcamlADT) ; FIXME and regenerate .opam file using 'dune build @install'
  (synopsis "An interpreter for Ocaml")
  (description
   "Interpreter supports basic types, functions, recursion and algebraic types")

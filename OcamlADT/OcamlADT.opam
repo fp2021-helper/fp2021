@@ -3,12 +3,12 @@ opam-version: "2.0"
 version: "0.1"
 synopsis: "An interpreter for Ocaml"
 description:
-  "Interpreter su[pports basic types, functions, recursion and algebraic types"
+  "Interpreter supports basic types, functions, recursion and algebraic types"
 maintainer: ["https://github.com/Mishavint"]
 authors: ["Mikhail Vintcukevich"]
 license: "LGPL-3.0-only"
-homepage: "https://github.com/Mishavint/fp2021/OcamlAdt"
-bug-reports: "https://github.com/Mishavint/fp2021/OcamlAdt"
+homepage: "https://github.com/Mishavint/fp2021"
+bug-reports: "https://github.com/Mishavint/fp2021"
 depends: [
   "dune" {>= "2.8"}
   "angstrom"

@@ -2,37 +2,37 @@
  (name demoAdt)
  (modules demoAdt)
  (public_name demoAdt)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (executable
  (name demoLet)
  (modules demoLet)
  (public_name demoLet)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (executable
  (name demoFunction)
  (modules demoFunction)
  (public_name demoFunction)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (executable
  (name demoRec)
  (modules demoRec)
  (public_name demoRec)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (executable
  (name demoCons)
  (modules demoCons)
  (public_name demoCons)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (executable
  (name demoApp)
  (modules demoApp)
  (public_name demoApp)
- (libraries OcamlAdt.Lib))
+ (libraries OcamlADT.Lib))
 
 (cram
  (deps
