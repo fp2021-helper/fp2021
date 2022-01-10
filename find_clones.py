@@ -14,7 +14,10 @@ if not os.path.exists("_reports"):
   os.mkdir("_reports")
 os.system("find . -iname _build -exec rm -fr {} \;")
 
-for x in [x for x in os.listdir(".") if good_dir(x)]:
+other_languages = list(filter(good_dir, os.listdir(".")))
+print(other_languages)
+
+for x in other_languages:
   print(f"x = {x}")
   cmd = f"jscpd --pattern '{LANG}/**/*.ml*' --pattern '{x}/**/*.ml*' -b -r consoleFull --skipLocal > _reports/vs_{x}.txt"
   print(cmd)
