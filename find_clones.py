@@ -7,15 +7,16 @@ LANG=sys.argv[1]
 REPORTS_DIR="_reports"
 REPORT_FILE="jscpd_report.txt"
 def good_dir(d):
-  print(f"good_dir: {d}")
-  return os.path.isdir(os.path.join(".", d)) and not d.startswith('.') and d != LANG and d != REPORTS_DIR
+  print(f"good_dir?: {d}")
+  return not d.startswith('_') and not d.startswith('.') and d != LANG and d != REPORTS_DIR and os.path.isdir(os.path.join(".", d))
 
-if not os.path.exists("_reports"):
-  os.mkdir("_reports")
 os.system("find . -iname _build -exec rm -fr {} \;")
 
 other_languages = list(filter(good_dir, os.listdir(".")))
 print(other_languages)
+
+if not os.path.exists("_reports"):
+  os.mkdir("_reports")
 
 for x in other_languages:
   print(f"x = {x}")
