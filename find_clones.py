@@ -8,7 +8,7 @@ REPORTS_DIR="_reports"
 REPORT_FILE="jscpd_report.txt"
 def good_dir(d):
   print(f"good_dir?: {d}", flush=True)
-  return not d.startswith('_') and not d.startswith('.') and d != LANG and d != REPORTS_DIR and os.path.isdir(os.path.join(".", d))
+  return not d.startswith('_') and not d.startswith('.') and d != LANG and d != 'mylinter' and d != REPORTS_DIR and os.path.isdir(os.path.join(".", d))
 
 
 print(os.listdir("."), flush=True)
