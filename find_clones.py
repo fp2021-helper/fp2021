@@ -10,7 +10,6 @@ def good_dir(d):
   print(f"good_dir?: {d}")
   return not d.startswith('_') and not d.startswith('.') and d != LANG and d != REPORTS_DIR and os.path.isdir(os.path.join(".", d))
 
-os.system("find . -iname _build -exec rm -fr {} \;")
 
 print(os.listdir("."))
 
@@ -19,6 +18,8 @@ print(other_languages)
 
 if not os.path.exists("_reports"):
   os.mkdir("_reports")
+
+os.system("find . -iname _build -exec rm -fr {} \;")
 
 for x in other_languages:
   print(f"x = {x}")
