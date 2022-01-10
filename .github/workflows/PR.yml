@@ -136,6 +136,7 @@ jobs:
         run: npm install -g jscpd
 
       - run: python3 -c "import os; print (os.listdir('.'));"
+
       - name: Looking for clones
         run: python3 -m trace --trace  --ignore-module=posixpath --ignore-module=genericpath ./find_clones.py ${{ env.latest }}
 
