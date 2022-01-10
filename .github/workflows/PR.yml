@@ -138,7 +138,8 @@ jobs:
       - run: python3 -c "import os; print (os.listdir('.'));"
 
       - name: Looking for clones
-        run: python3 -m trace --trace  --ignore-module=posixpath --ignore-module=genericpath ./find_clones.py ${{ env.latest }}
+        run: python3 -m trace --trace  --ignore-module=posixpath ./find_clones.py ${{ env.latest }}
+        #run: python3 -m trace --trace  --ignore-module=posixpath --ignore-module=genericpath ./find_clones.py ${{ env.latest }}
 
       - run: echo ${{ github.event.number }} > PR_number.txt
 
