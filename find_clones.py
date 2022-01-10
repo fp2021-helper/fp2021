@@ -12,6 +12,8 @@ def good_dir(d):
 
 os.system("find . -iname _build -exec rm -fr {} \;")
 
+print(os.listdir("."))
+
 other_languages = list(filter(good_dir, os.listdir(".")))
 print(other_languages)
 
