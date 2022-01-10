@@ -7,14 +7,14 @@ LANG=sys.argv[1]
 REPORTS_DIR="_reports"
 REPORT_FILE="jscpd_report.txt"
 def good_dir(d):
-  print(f"good_dir?: {d}")
+  print(f"good_dir?: {d}", flush=True)
   return not d.startswith('_') and not d.startswith('.') and d != LANG and d != REPORTS_DIR and os.path.isdir(os.path.join(".", d))
 
 
-print(os.listdir("."))
+print(os.listdir("."), flush=True)
 
 other_languages = list(filter(good_dir, os.listdir(".")))
-print(other_languages)
+print(other_languages, flush=True)
 
 if not os.path.exists("_reports"):
   os.mkdir("_reports")
@@ -22,13 +22,13 @@ if not os.path.exists("_reports"):
 os.system("find . -iname _build -exec rm -fr {} \;")
 
 for x in other_languages:
-  print(f"x = {x}")
+  print(f"x = {x}", flush=True)
   cmd = f"jscpd --pattern '{LANG}/**/*.ml*' --pattern '{x}/**/*.ml*' -b -r consoleFull --skipLocal > _reports/vs_{x}.txt"
-  print(cmd)
+  print(cmd, flush=True)
   os.system(cmd)
 
 if 1:
-  print("Looking for clones in itself");
+  print("Looking for clones in itself", flush=True);
   cmd = f"jscpd --pattern '{LANG}/**/*.ml*' -b -r consoleFull > _reports/vs_{LANG}.txt"
   os.system(cmd)
 
