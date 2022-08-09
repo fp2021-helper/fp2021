@@ -1,0 +1,26 @@
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A -w -26)
+   (-short-paths))))
+
+(executable
+ (name parserTest)
+ (modules parserTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name parserTestPack)
+ (modules parserTestPack)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name newParserTest)
+ (modules newParserTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
