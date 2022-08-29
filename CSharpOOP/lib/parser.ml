@@ -47,6 +47,7 @@ module Expression = struct
     | s -> return s
 
   let name = ident >>= fun name -> return (Name name)
+  let concatenate_name_with_sep sep (Name n1) (Name n2) = Name (n1 ^ sep ^ n2)
 
   let%test _ = apply name "Name" = Some (Name "Name")
   let%test _ = apply name "   Name" = Some (Name "Name")
@@ -359,6 +360,8 @@ module Object = struct
     choice
       [
         token "public" >> return Public;
+        token "private" >> return Private;
+        token "protected" >> return Protected;
         token "const" >> return Const;
         token "virtual" >> return Virtual;
         token "override" >> return Override;
@@ -385,10 +388,10 @@ module Object = struct
       [
         ( name >>= fun parent_name ->
           token "." >> name >>= fun method_name ->
-          return (method_name, Some parent_name) );
-        (name >>= fun method_name -> return (method_name, None));
+          return (concatenate_name_with_sep "." parent_name method_name) );
+        (name >>= fun method_name -> return method_name);
       ]
-    >>= fun (method_name, parent_name) ->
+    >>= fun method_name ->
     parens (sep_by parameter (token ",")) >>= fun method_parameter_list ->
     choice
       [
@@ -397,17 +400,11 @@ module Object = struct
             (Method
                ( method_type,
                  method_name,
-                 parent_name,
                  method_parameter_list,
                  Some method_statement_block )) );
         token ";"
         >> return
-             (Method
-                ( method_type,
-                  method_name,
-                  parent_name,
-                  method_parameter_list,
-                  None ));
+             (Method (method_type, method_name, method_parameter_list, None));
       ]
 
   let constructor_decl =
@@ -442,57 +439,78 @@ module Object = struct
     sep_by variable_decl (token ",") >>= fun variable_decl_list ->
     token ";" >> return (Field (field_type, variable_decl_list))
 
-  let object_element =
+  let object_element is_class =
     many modifier >>= fun object_element_modifier_list ->
+    let set_default_modifier =
+      match object_element_modifier_list with
+      | [] when is_class -> return [ Private ]
+      | [] when not is_class -> return [ Public ]
+      | modifier_list -> return modifier_list
+    in
+    set_default_modifier >>= fun updated_object_element_modifier_list ->
     field_decl <|> constructor_decl <|> method_decl >>= fun object_element ->
-    return (object_element_modifier_list, object_element)
+    return (updated_object_element_modifier_list, object_element)
 
   let%test _ =
-    apply object_element "public int Test(int a) { return a; }"
+    apply (object_element true) "public int Test(int a) { return a; }"
     = Some
         ( [ Public ],
           Method
             ( TInt,
               Name "Test",
-              None,
               [ (TInt, Name "a") ],
               Some (StatementBlock [ Return (Some (Identifier "a")) ]) ) )
 
   let%test _ =
-    apply object_element "public int Class.Test(int a) { return a; }"
+    apply (object_element true) "int Test(int a) { return a; }"
+    = Some
+        ( [ Private ],
+          Method
+            ( TInt,
+              Name "Test",
+              [ (TInt, Name "a") ],
+              Some (StatementBlock [ Return (Some (Identifier "a")) ]) ) )
+
+  let%test _ =
+    apply (object_element false) "int Test(int a) { return a; }"
     = Some
         ( [ Public ],
           Method
             ( TInt,
               Name "Test",
-              Some (Name "Class"),
               [ (TInt, Name "a") ],
               Some (StatementBlock [ Return (Some (Identifier "a")) ]) ) )
 
   let%test _ =
-    apply object_element "public int Sum(int a, string b) {}"
+    apply (object_element true) "public int Class.Test(int a) { return a; }"
+    = Some
+        ( [ Public ],
+          Method
+            ( TInt,
+              Name "Class.Test",
+              [ (TInt, Name "a") ],
+              Some (StatementBlock [ Return (Some (Identifier "a")) ]) ) )
+
+  let%test _ =
+    apply (object_element true) "public int Sum(int a, string b) {}"
     = Some
         ( [ Public ],
           Method
             ( TInt,
               Name "Sum",
-              None,
               [ (TInt, Name "a"); (TString, Name "b") ],
               Some (StatementBlock []) ) )
 
   let%test _ =
-    apply object_element "public abstract int Sum(int a, string b);"
+    apply (object_element true) "public abstract int Sum(int a, string b);"
     = Some
         ( [ Public; Abstract ],
           Method
-            ( TInt,
-              Name "Sum",
-              None,
-              [ (TInt, Name "a"); (TString, Name "b") ],
-              None ) )
+            (TInt, Name "Sum", [ (TInt, Name "a"); (TString, Name "b") ], None)
+        )
 
   let%test _ =
-    apply object_element "public Win(Class o) {}"
+    apply (object_element true) "public Win(Class o) {}"
     = Some
         ( [ Public ],
           Constructor
@@ -500,7 +518,7 @@ module Object = struct
         )
 
   let%test _ =
-    apply object_element "public Win(Class o, string m) : base(m) {}"
+    apply (object_element true) "public Win(Class o, string m) : base(m) {}"
     = Some
         ( [ Public ],
           Constructor
@@ -510,16 +528,16 @@ module Object = struct
               StatementBlock [] ) )
 
   let%test _ =
-    apply object_element "public static int test;"
+    apply (object_element true) "public static int test;"
     = Some ([ Public; Static ], Field (TInt, [ (Name "test", None) ]))
 
   let%test _ =
-    apply object_element "public const string mega = \"STR\";"
+    apply (object_element true) "public const string mega = \"STR\";"
     = Some
         ( [ Public; Const ],
           Field (TString, [ (Name "mega", Some (Value (VString "STR"))) ]) )
 
-  let object_decl_helper =
+  let object_decl_helper is_class =
     name >>= fun object_name ->
     choice
       [
@@ -528,7 +546,8 @@ module Object = struct
         return [];
       ]
     >>= fun parent_object_name ->
-    token "{" >> sep_by object_element spaces >>= fun object_element_list ->
+    token "{" >> sep_by (object_element is_class) spaces
+    >>= fun object_element_list ->
     token "}" >> return (object_name, parent_object_name, object_element_list)
 
   let object_decl =
@@ -537,22 +556,22 @@ module Object = struct
       | [] ->
           choice
             [
-              ( token "class" >> object_decl_helper
+              ( token "class" >> object_decl_helper true
               >>= fun (key, parent_key, element_list) ->
-                return (Class ([ Protected ], key, parent_key, element_list)) );
-              ( token "interface" >> object_decl_helper
+                return (Class ([ Public ], key, parent_key, element_list)) );
+              ( token "interface" >> object_decl_helper false
               >>= fun (key, parent_key, element_list) ->
                 return (Interface (Public, key, parent_key, element_list)) );
             ]
       | fst_modifier :: _ as object_modifier_list ->
           choice
             [
-              ( token "class" >> object_decl_helper
+              ( token "class" >> object_decl_helper true
               >>= fun (key, parent_key, element_list) ->
                 return
                   (Class (object_modifier_list, key, parent_key, element_list))
               );
-              ( token "interface" >> object_decl_helper
+              ( token "interface" >> object_decl_helper false
               >>= fun (key, parent_key, element_list) ->
                 return (Interface (fst_modifier, key, parent_key, element_list))
               );
@@ -576,7 +595,7 @@ module Object = struct
     apply object_decl " class test : par1, par2, par3\n{}"
     = Some
         (Class
-           ( [ Protected ],
+           ( [ Public ],
              Name "test",
              [ Name "par1"; Name "par2"; Name "par3" ],
              [] ))

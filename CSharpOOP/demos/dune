@@ -24,3 +24,31 @@
  (libraries CSharpOOP.Lib)
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name classLoaderTest)
+ (modules classLoaderTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name newClassLoaderTest)
+ (modules newClassLoaderTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name interpreterTest)
+ (modules interpreterTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name newInterpreterTest)
+ (modules newInterpreterTest)
+ (libraries CSharpOOP.Lib)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))

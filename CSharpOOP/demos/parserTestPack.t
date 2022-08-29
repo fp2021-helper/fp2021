@@ -6,7 +6,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TInt,
                               [(Name ("a"), Some (Value (VInt (23))))]);
@@ -21,7 +21,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([Print (Value (VString ("aaaaa")));
                              Print (Value (VInt (42)))]))))])
   -_-_-_-_-_-_-_-_-_-_- Assing to method -_-_-_-_-_-_-_-_-_-_-
@@ -30,7 +30,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([Expression (Assign
                                          (AccessByPoint
                                           (Identifier ("a"),
@@ -42,7 +42,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TRef ("var"),
                               [(Name ("a"),
@@ -57,7 +57,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TInt,
                               [(Name ("a"),
@@ -79,7 +79,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TRef ("SomeClass"),
                               [(Name ("a"),
@@ -118,7 +118,7 @@
   ([Public], Name ("SomeClass"), [],
    [([Public],
      Method
-     (TInt, Name ("F"), None, [],
+     (TInt, Name ("F"), [],
       Some (StatementBlock ([Return (Some (Value (VInt (123))))]))))])
   -_-_-_-_-_-_-_-_-_-_- Interface -_-_-_-_-_-_-_-_-_-_-
   
@@ -126,7 +126,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TRef ("IInterface"),
                               [(Name ("a"),
@@ -138,9 +138,28 @@
   Class
   ([Public], Name ("Program"), [],
    [([Public; Static],
-     Method (TVoid, Name ("Main"), None, [], Some (StatementBlock ([]))))])
+     Method (TVoid, Name ("Main"), [], Some (StatementBlock ([]))))])
   Interface (Public, Name ("IInterface"), [], [])
   Class ([Public], Name ("A"), [], [])
   Class ([Public], Name ("B"), [Name ("IInterface"); Name ("A")], [])
   Class ([Public], Name ("C"), [Name ("IInterface"); Name ("A")], [])
+  -_-_-_-_-_-_-_-_-_-_- Simple object testing -_-_-_-_-_-_-_-_-_-_-
+  
+  Class
+  ([Public], Name ("Program"), [],
+   [([Public; Static],
+     Method (TVoid, Name ("Main"), [], Some (StatementBlock ([]))))])
+  Class
+  ([Public], Name ("A"), [],
+   [([Public], Field (TInt, [(Name ("a"), None)]));
+    ([Private],
+     Method
+     (TInt, Name ("Method"), [(TInt, Name ("b"))], Some (StatementBlock ([]))))])
+  Class
+  ([Public], Name ("B"), [], [([Private], Field (TInt, [(Name ("a"), None)]))])
+  Class
+  ([Public], Name ("C"), [],
+   [([Protected], Field (TInt, [(Name ("a"), None)]))])
+  Interface
+  (Public, Name ("D"), [], [([Public], Method (TInt, Name ("a"), [], None))])
  

@@ -203,3 +203,42 @@ let parse_result =
 |})
 
 let () = print_list (List.map show_objects parse_result)
+
+let () =
+  print_string
+    "\n-_-_-_-_-_-_-_-_-_-_- Simple object testing -_-_-_-_-_-_-_-_-_-_-\n\n"
+
+let parse_result =
+  Option.get
+    (apply parser
+       {|
+public class Program
+{
+  public static void Main() 
+  {
+	}
+}
+
+public class A
+{
+  public int a;
+  private int Method(int b) {}
+}
+
+class B
+{
+  private int a;
+}
+
+public class C
+{
+  protected int a;
+}
+
+public interface D
+{
+  int a();
+}
+|})
+
+let () = print_list (List.map show_objects parse_result)

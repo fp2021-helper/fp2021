@@ -13,38 +13,38 @@ let parse_result =
     {
       public static void Main() 
       {
-        var a = new A();
+        A a = new A();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) a).F());
 
-        var b = new B();
+        B b = new B();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) b).F());
         Console.WriteLine(((IInterface) b).F());
 
-        var c = new C();
+        C c = new C();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) c).F());
         Console.WriteLine(((IInterface) c).F());
 
-        var d = new D();
+        D d = new D();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) d).F());
         Console.WriteLine(d.F());
         Console.WriteLine(((IInterface) d).F());
 
-        var d1 = new D1();
+        D1 d1 = new D1();
         Console.WriteLine("######################################");
         Console.WriteLine(((IInterface) d1).F());
         
-        var e = new E();
+        E e = new E();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) e).F());
         Console.WriteLine(e.F());
         Console.WriteLine(((IInterface) e).F());
         Console.WriteLine(((IInterface) ((B) e)).F());
 
-        var g = new G();
+        G g = new G();
         Console.WriteLine("######################################");
         Console.WriteLine(((A) g).F());
         Console.WriteLine(((IInterface) g).F());
@@ -73,7 +73,7 @@ let parse_result =
             return 9;
         }
     
-        int IInterface.F() {
+        public int IInterface.F() {
             return 100;
         }
     }    

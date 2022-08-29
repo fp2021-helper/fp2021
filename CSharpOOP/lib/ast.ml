@@ -1,3 +1,12 @@
+module KeyMap = struct
+  include Map.Make (String)
+
+  let pp pp_v ppf map =
+    Format.fprintf ppf "@[[@[";
+    iter (fun k v -> Format.fprintf ppf "@[\"%s\": %a@],@\n" k pp_v v) map;
+    Format.fprintf ppf "@]]@]"
+end
+
 type modifiers =
   | Public
   | Private
@@ -21,9 +30,24 @@ type values =
   | VObjectReference of object_references
 [@@deriving show { with_path = false }]
 
+and field_references = {
+  key : string;
+  field_type : types;
+  field_value : values;
+  is_const : bool;
+  assignments_count : int;
+}
+[@@deriving show { with_path = false }]
+
 and object_references =
   | NullObjectReference
-  | ObjectReference of { class_key : string; parent_key : string; number : int }
+  | ObjectReference of {
+      class_key : string;
+      ext_interface : string option;
+      field_references_table : field_references KeyMap.t;
+      number : int;
+    }
+[@@deriving show { with_path = false }]
 
 type names = Name of string [@@deriving show { with_path = false }]
 
@@ -76,8 +100,8 @@ and fields =
   | Field of types * (names * expressions option) list
   | Method of
       types (* type *)
-      * names (* method name *)
-      * names option (* parent class name *)
+      * names
+        (* method name (identifier or interface key, dot and identifier) *)
       * (types * names) list (* args *)
       * statements option (* body *)
   | Constructor of

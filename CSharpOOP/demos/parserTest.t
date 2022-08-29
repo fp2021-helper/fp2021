@@ -3,7 +3,7 @@
   ([Public], Name ("Program"), [],
    [([Public; Static],
      Method
-     (TVoid, Name ("Main"), None, [],
+     (TVoid, Name ("Main"), [],
       Some (StatementBlock ([VariableDecl
                              (None, TRef ("Person"),
                               [(Name ("person"),
@@ -53,22 +53,22 @@
                                     Identifier ("age")))])));
     ([Public],
      Method
-     (TInt, Name ("GetWeight"), None, [],
+     (TInt, Name ("GetWeight"), [],
       Some (StatementBlock ([Return (Some (Identifier ("weight")))]))));
     ([Public],
      Method
-     (TVoid, Name ("SetWeight"), None, [(TInt, Name ("weight"))],
+     (TVoid, Name ("SetWeight"), [(TInt, Name ("weight"))],
       Some (StatementBlock ([Expression (Assign
                                          (AccessByPoint
                                           (This, Identifier ("weight")),
                                           Identifier ("weight")))]))));
     ([Public],
      Method
-     (TInt, Name ("GetAge"), None, [],
+     (TInt, Name ("GetAge"), [],
       Some (StatementBlock ([Return (Some (Identifier ("age")))]))));
     ([Public],
      Method
-     (TVoid, Name ("SetAge"), None, [(TInt, Name ("age"))],
+     (TVoid, Name ("SetAge"), [(TInt, Name ("age"))],
       Some (StatementBlock ([Expression (Assign
                                          (AccessByPoint
                                           (This, Identifier ("age")),
@@ -92,18 +92,18 @@
                                     Identifier ("cash")))])));
     ([Public],
      Method
-     (TInt, Name ("GetCash"), None, [],
+     (TInt, Name ("GetCash"), [],
       Some (StatementBlock ([Return (Some (Identifier ("cash")))]))));
     ([Public],
      Method
-     (TVoid, Name ("SetCash"), None, [(TInt, Name ("cash"))],
+     (TVoid, Name ("SetCash"), [(TInt, Name ("cash"))],
       Some (StatementBlock ([Expression (Assign
                                          (AccessByPoint
                                           (This, Identifier ("cash")),
                                           Identifier ("cash")))]))));
     ([Public],
      Method
-     (TVoid, Name ("TellEvenNumbers"), None, [(TInt, Name ("count"))],
+     (TVoid, Name ("TellEvenNumbers"), [(TInt, Name ("count"))],
       Some (StatementBlock ([For
                              (Some (VariableDecl
                                     (None, TInt,
